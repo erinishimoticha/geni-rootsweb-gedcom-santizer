@@ -28,6 +28,8 @@ sub init() {
 		? $args->{'c'} || $args->{'change'} : 0;
 	$args->{'i'} = (defined $args->{'i'} || defined $args->{'infile'})
 		? $args->{'i'} || $args->{'infile'} : '';
+	$args->{'l'} = (defined $args->{'l'} || defined $args->{'link'})
+		? $args->{'l'} || $args->{'link'} : '';
 	$args->{'m'} = (defined $args->{'m'} || defined $args->{'married'})
 		? $args->{'m'} || $args->{'married'} : 0;
 	$args->{'n'} = (defined $args->{'n'} || defined $args->{'notes'})
@@ -116,7 +118,7 @@ sub read_file() {
 }
 
 sub write_file() {
-	my ($curind, $mode, $line, $title, $cit, $num, $lastnum);
+	my ($curind, $mode, $line, $title, $cit, $num, $lastnum, $printed_link);
 	open OUT, sprintf(">%s", $args->{'o'});
 	$lines = 0;
 	foreach (@filecontent) {
@@ -131,6 +133,7 @@ sub write_file() {
 		if ($line =~ /0 \@(\w+)\@ INDI/i) {
 			$curind = $1;
 			$mode = '';
+			$printed_link = 0;
 		} elsif ($curind && $line =~ /0 TRLR/i) {
 			$mode = 'source';
 		} elsif ($curind && $line =~ /1 NOTE/
@@ -169,7 +172,29 @@ sub write_file() {
 		) {
 			# These are the lines that we are completely removing.
 		} elsif ($cmd && array_has($cmd, values %{$citmap})) {
+			# print Geni link if there was no about_me section
+			if ($args->{'l'} && !$printed_link && (
+				$line =~ /FAMS / || $line =~ /FAMC / || $line =~ /SUBM /
+			)) {
+				$curind =~ /I(\d+)/i;
+				print OUT sprintf(
+					" 1 NOTE Geni Profile: http://www.geni.com/people/p/%s\n",
+					$1
+				);
+				$printed_link = 1;
+			}
 			print OUT " " x $num, "$line\n";
+
+			# print Geni link if there was already an about_me section
+			if ($args->{'l'} && !$printed_link && $line =~ /about_me/i) {
+				$curind =~ /I(\d+)/i;
+				$num++;
+				print OUT sprintf(
+					"%s%s CONT Geni Profile: http://www.geni.com/people/p/%s\n",
+					' ' x $num, $num, $1
+				);
+				$printed_link = 1;
+			}
 			if ($ppl->{$curind} && $ppl->{$curind}{$cmd}) {
 				$num++;
 				foreach my $uid (sort {$a <=> $b}
@@ -231,6 +256,7 @@ sub usage() {
     -c, --change     Leave CHAN notes, which contains the dates of past
                      revisions, in place.
     -i, --infile     Input GEDCOM file exported from Geni.com
+    -l, --link       Add a link to the Geni.com profile to the about me NOTE.
     -m, --married    Leave the _MAR field, which contains the married name,
                      in place.
     -n, --notes      Leave NOTE elements and their children in place.
