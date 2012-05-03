@@ -183,6 +183,9 @@ sub write_file() {
 				);
 				$printed_link = 1;
 			}
+			if ($line =~ /about_me/i) {
+				$line =~ s/\{geni:about_me\}\s*//ig;
+			}
 			print OUT " " x $num, "$line\n";
 
 			# print Geni link if there was already an about_me section
