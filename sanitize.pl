@@ -18,8 +18,9 @@ my $REMOVE_MAIDEN_NAMES = 1;
 # Remove ADDR, which is equivalent to Geni's Current Location field.
 my $REMOVE_ADDR = 1;
 
-# Remove NOTE. I don't know what these are used for in Geni. I cannot find
-# these entries in the Geni.com web UI.
+# Remove all NOTE entries except the one labeled 'geni:about_me'. I don't know
+# what these are used for in Geni. I cannot find these entries in the Geni.com
+# web UI.
 my $REMOVE_NOTE = 1;
 
 # Convert OBJE type sources into SOUR type sources.
@@ -116,8 +117,8 @@ sub read_file() {
 		}
 	}
 
-	print "\n I found ", scalar keys %{$src}, " sources and ",
-		scalar keys %{$ppl}, " people\nWriting file ";
+	print "\nI found ", scalar keys %{$src}, " sources for ",
+		scalar keys %{$ppl}, " people\n.Writing file ";
 }
 
 sub write_file() {
@@ -138,6 +139,10 @@ sub write_file() {
 			$mode = '';
 		} elsif ($curind && $line =~ /0 TRLR/i) {
 			$mode = 'source';
+		} elsif ($curind && $line =~ /1 NOTE/
+				&& $line !~ /about_me/i && $line !~ /occupation/i
+				&& $REMOVE_NOTE) {
+			$mode = 'note';
 		} elsif ($curind && $line =~ / CHAN/ && $REMOVE_CHANGE_NOTES) {
 			$mode = 'change';
 		} elsif ($curind && $line =~ /1 OBJE/i) {
@@ -145,7 +150,7 @@ sub write_file() {
 		} elsif ($curind && $line =~ /1 SOUR/i) {
 			$title = '';
 			$mode = 'source';
-		} elsif ($line =~ /^\s+[10] /i
+		} elsif ($line =~ /^\s*[10] /i
 				|| ($mode eq 'change' && $lastnum > $num)) {
 			$mode = '';
 		}
@@ -155,13 +160,19 @@ sub write_file() {
 			if ($line) {
 				print OUT " 1 OCCU $line\n";
 			}
-		} elsif ($mode eq 'source' || $line =~ /geni:/i || ($mode eq 'change'
-					&& $REMOVE_CHANGE_NOTES)
-				|| $line =~ /OCCU/ || ($line =~ /ADDR$/ && $REMOVE_ADDR)
-				|| ($line =~ /1 NOTE/ && $REMOVE_NOTE)
-				|| (($line =~ /STAE/ || $line =~ /CTRY/ || $line =~ /CITY/)
-					&& $REMOVE_EXTRA_PLAC_FIELDS)
-				|| ($line =~ /_MAR/ && $REMOVE_MAIDEN_NAMES)) {
+		} elsif (
+			$mode eq 'source'
+			|| ($line =~ /geni:/i && $line !~ /about_me/i)
+			|| ($mode eq 'change' && $REMOVE_CHANGE_NOTES)
+			|| $line =~ /OCCU/
+			|| ($line =~ /ADDR$/ && $REMOVE_ADDR)
+			|| ($mode eq 'note' && $REMOVE_NOTE)
+			|| (
+					($line =~ /STAE/ || $line =~ /CTRY/ || $line =~ /CITY/)
+					&& $REMOVE_EXTRA_PLAC_FIELDS
+				)
+			|| ($line =~ /_MAR/ && $REMOVE_MAIDEN_NAMES)
+		) {
 			# These are the lines that we are completely removing.
 		} elsif ($cmd && array_has($cmd, values %{$citmap})) {
 			print OUT " " x $num, "$line\n";
