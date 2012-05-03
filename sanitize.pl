@@ -2,31 +2,11 @@
 
 use strict;
 use Data::Dumper;
+use lib 'lib';
+use ParseArgs;
 
-# Whether or not to remove CHAN notes, which indicate when the
-# field was last updated.
-my $REMOVE_CHANGE_NOTES = 1;
+my $args = ParseArgs::parse(\@ARGV);
 
-# Wether or not to remove STAE, CITY, and CTRY fields, which are under the
-# PLAC field.  I believe this is always recommended, as I have not
-# encountered an instance yet where these were set and PLAC was not.
-my $REMOVE_EXTRA_PLAC_FIELDS = 1;
-
-# Remove the _MAR field, which is Geni-specific.
-my $REMOVE_MAIDEN_NAMES = 1;
-
-# Remove ADDR, which is equivalent to Geni's Current Location field.
-my $REMOVE_ADDR = 1;
-
-# Remove all NOTE entries except the one labeled 'geni:about_me'. I don't know
-# what these are used for in Geni. I cannot find these entries in the Geni.com
-# web UI.
-my $REMOVE_NOTE = 1;
-
-# Convert OBJE type sources into SOUR type sources.
-# Places SOUR objects under the field they provide a citation for.
-# Define all SOUR objects at the end of the file.
-# Rename geni:occupation to OCCU
 
 my (
 	$curind, $mode, $src, $ppl,
@@ -34,8 +14,6 @@ my (
 	$citmap, @filecontent
 );
 my $srcidx = 101;
-my $file = shift;
-my $newfile = shift;
 $| = 1;
 
 init();
@@ -43,15 +21,31 @@ read_file();
 write_file();
 
 sub init() {
+	# Consolidate arguments of different forms
+	$args->{'a'} = (defined $args->{'a'} || defined $args->{'addr'})
+		? $args->{'a'} || $args->{'addr'} : 0;
+	$args->{'c'} = (defined $args->{'c'} || defined $args->{'change'})
+		? $args->{'c'} || $args->{'change'} : 0;
+	$args->{'i'} = (defined $args->{'i'} || defined $args->{'infile'})
+		? $args->{'i'} || $args->{'infile'} : '';
+	$args->{'m'} = (defined $args->{'m'} || defined $args->{'married'})
+		? $args->{'m'} || $args->{'married'} : 0;
+	$args->{'n'} = (defined $args->{'n'} || defined $args->{'notes'})
+		? $args->{'n'} || $args->{'notes'} : 0;
+	$args->{'o'} = (defined $args->{'o'} || defined $args->{'outfile'})
+		? $args->{'o'} || $args->{'outfile'} : '';
+	$args->{'p'} = (defined $args->{'p'} || defined $args->{'places'})
+		? $args->{'p'} || $args->{'places'} : 0;
+
 	# Check that we were given a file and set up some variables.
-	if (!$file) {
-		print "No file given.\n";
+	if (!$args->{'i'}) {
+		print usage();
 		exit 1;
 	}
 
-	if (!$newfile) {
-		$newfile = $file;
-		$newfile =~ s/\.(\w+)$/-fixed.$1/ig;
+	if (!$args->{'o'}) {
+		$args->{'o'} = $args->{'i'};
+		$args->{'o'} =~ s/\.(\w+)$/-fixed.$1/ig;
 	}
 
 	$citmap = {
@@ -85,8 +79,8 @@ sub read_file() {
 	# Read in the GEDCOM and build some data structures for the sources
 	# which will allow us to place each source under it's target individual
 	# and field when we write the new GEDCOM back out.
-	print "Reading in $file ";
-	open INF, $file;
+	print "Reading in ",$args->{'i'} , " ";
+	open INF, $args->{'i'};
 	@filecontent = <INF>;
 	close INF;
 
@@ -118,12 +112,12 @@ sub read_file() {
 	}
 
 	print "\nI found ", scalar keys %{$src}, " sources for ",
-		scalar keys %{$ppl}, " people\n.Writing file ";
+		scalar keys %{$ppl}, " people.\nWriting file ";
 }
 
 sub write_file() {
 	my ($curind, $mode, $line, $title, $cit, $num, $lastnum);
-	open OUT, ">$newfile";
+	open OUT, sprintf(">%s", $args->{'o'});
 	$lines = 0;
 	foreach (@filecontent) {
 		$lines++;
@@ -141,9 +135,9 @@ sub write_file() {
 			$mode = 'source';
 		} elsif ($curind && $line =~ /1 NOTE/
 				&& $line !~ /about_me/i && $line !~ /occupation/i
-				&& $REMOVE_NOTE) {
+				&& !$args->{'n'}) {
 			$mode = 'note';
-		} elsif ($curind && $line =~ / CHAN/ && $REMOVE_CHANGE_NOTES) {
+		} elsif ($curind && $line =~ / CHAN/ && !$args->{'c'}) {
 			$mode = 'change';
 		} elsif ($curind && $line =~ /1 OBJE/i) {
 			$mode = 'source';
@@ -163,15 +157,15 @@ sub write_file() {
 		} elsif (
 			$mode eq 'source'
 			|| ($line =~ /geni:/i && $line !~ /about_me/i)
-			|| ($mode eq 'change' && $REMOVE_CHANGE_NOTES)
+			|| ($mode eq 'change' && !$args->{'c'})
 			|| $line =~ /OCCU/
-			|| ($line =~ /ADDR$/ && $REMOVE_ADDR)
-			|| ($mode eq 'note' && $REMOVE_NOTE)
+			|| ($line =~ /ADDR$/ && !$args->{'a'})
+			|| ($mode eq 'note' && !$args->{'n'})
 			|| (
 					($line =~ /STAE/ || $line =~ /CTRY/ || $line =~ /CITY/)
-					&& $REMOVE_EXTRA_PLAC_FIELDS
+					&& !$args->{'p'}
 				)
-			|| ($line =~ /_MAR/ && $REMOVE_MAIDEN_NAMES)
+			|| ($line =~ /_MAR/ && !$args->{'m'})
 		) {
 			# These are the lines that we are completely removing.
 		} elsif ($cmd && array_has($cmd, values %{$citmap})) {
@@ -197,7 +191,7 @@ sub write_file() {
 	}
 	print OUT "0 TRLR\n";
 	close OUT;
-	print "\nDone, created $newfile\n";
+	print "\nDone, created ", $args->{'o'}, "\n";
 }
 
 sub array_has(@) {
@@ -223,4 +217,26 @@ sub has_source($$) {
 		}
 	}
 	return 0;
+}
+
+sub usage() {
+	return "\tUsage:
+
+    ./sanitize.pl -i gedcom_file [-o output_file] [options]
+
+        Options:
+
+    -a, --addr       Leave the ADDR field, which contains the current
+                     location, in place.
+    -c, --change     Leave CHAN notes, which contains the dates of past
+                     revisions, in place.
+    -i, --infile     Input GEDCOM file exported from Geni.com
+    -m, --married    Leave the _MAR field, which contains the married name,
+                     in place.
+    -n, --notes      Leave NOTE elements and their children in place.
+    -o, --outfile    Output GEDCOM filename.
+    -p, --places     Leave nonstandard children of PLAC elements in place.
+                     The PLAC field itself is never removed, regardless
+                     of this setting.
+";
 }
