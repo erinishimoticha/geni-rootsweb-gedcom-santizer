@@ -105,9 +105,11 @@ sub read_file() {
 				$cit = $citmap->{$1};
 			} elsif ($line =~ /3 TITL (.*)$/i) {
 				$title = $1;
-				$srcidx++;
-				$src->{$srcidx} = $title;
-				$ppl->{$curind}{$cit}{$srcidx} = 1;
+				if (!has_source($ppl->{$curind}{$cit}, $title)) {
+					$srcidx++;
+					$src->{$srcidx} = $title;
+					$ppl->{$curind}{$cit}{$srcidx} = 1;
+				}
 			} elsif ($line =~ /^\s+1 /i) {
 				$mode = '';
 			}
@@ -194,6 +196,18 @@ sub array_has(@) {
 	my @array = @_;
 	foreach (@array) {
 		if ($element == $_) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+sub has_source($$) {
+	# has_source($ppl->{$curind}{$cit}, $title)
+	my $obj = shift;
+	my $title = shift;
+	foreach my $id (keys %{$ppl->{$curind}{$cit}}) {
+		if ($src->{$id} eq $title) {
 			return 1;
 		}
 	}
