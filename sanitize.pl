@@ -18,6 +18,10 @@ my $REMOVE_MAIDEN_NAMES = 1;
 # Remove ADDR, which is equivalent to Geni's Current Location field.
 my $REMOVE_ADDR = 1;
 
+# Remove NOTE. I don't know what these are used for in Geni. I cannot find
+# these entries in the Geni.com web UI.
+my $REMOVE_NOTE = 1;
+
 # Convert OBJE type sources into SOUR type sources.
 # Places SOUR objects under the field they provide a citation for.
 # Define all SOUR objects at the end of the file.
@@ -152,6 +156,7 @@ sub write_file() {
 		} elsif ($mode eq 'source' || $line =~ /geni:/i || ($mode eq 'change'
 					&& $REMOVE_CHANGE_NOTES)
 				|| $line =~ /OCCU/ || ($line =~ /ADDR$/ && $REMOVE_ADDR)
+				|| ($line =~ /1 NOTE/ && $REMOVE_NOTE)
 				|| (($line =~ /STAE/ || $line =~ /CTRY/ || $line =~ /CITY/)
 					&& $REMOVE_EXTRA_PLAC_FIELDS)
 				|| ($line =~ /_MAR/ && $REMOVE_MAIDEN_NAMES)) {
