@@ -4,7 +4,24 @@ geni-rootsweb-gedcom-santizer
 Prepare a Geni.com GEDCOM for uploading to RootsWeb.
 
 Usage:
-	./sanitize.pl my-family.ged [my-family-rootsweb-version.ged]
+
+    ./sanitize.pl -i gedcom_file [-o output_file] [options]
+
+        Options:
+
+    -a, --addr       Leave the ADDR field, which contains the current
+                     location, in place.
+    -c, --change     Leave CHAN notes, which contains the dates of past
+                     revisions, in place.
+    -i, --infile     Input GEDCOM file exported from Geni.com
+    -l, --link       Add a link to the Geni.com profile to the about me NOTE.
+    -m, --married    Leave the _MAR field, which contains the married name,
+                     in place.
+    -n, --notes      Leave NOTE elements and their children in place.
+    -o, --outfile    Output GEDCOM filename.
+    -p, --places     Leave nonstandard children of PLAC elements in place.
+                     The PLAC field itself is never removed, regardless
+                     of this setting.
 
 Requirements:
 	Any version of perl that supports the array multiplier operator ('x').
