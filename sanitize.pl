@@ -15,6 +15,7 @@ my (
 );
 my $srcidx = 101;
 $| = 1;
+my $ln = {};
 
 init();
 read_file();
@@ -34,6 +35,8 @@ sub init() {
 		? $args->{'m'} || $args->{'married'} : 0;
 	$args->{'n'} = (defined $args->{'n'} || defined $args->{'notes'})
 		? $args->{'n'} || $args->{'notes'} : 0;
+	$args->{'N'} = (defined $args->{'N'} || defined $args->{'number'})
+		? $args->{'N'} || $args->{'number'} : 0;
 	$args->{'o'} = (defined $args->{'o'} || defined $args->{'outfile'})
 		? $args->{'o'} || $args->{'outfile'} : '';
 	$args->{'p'} = (defined $args->{'p'} || defined $args->{'places'})
@@ -130,6 +133,17 @@ sub write_file() {
 		$line =~ /^\s*(\d+)\s+(\S+)/i;
 		$num = $1;
 		my $cmd = $2;
+        if ($cmd eq "SURN") {
+		    $line =~ /SURN\s+(.*)/i;
+            my $surname = lc($1);
+            if ($args->{'N'}) {
+                if (defined $ln->{$surname}) {
+                    $ln->{$surname}++;
+                } else {
+                    $ln->{$surname} = 1;
+                }
+            }
+        }
 		if ($line =~ /0 \@(\w+)\@ INDI/i) {
 			$curind = $1;
 			$mode = '';
@@ -220,6 +234,12 @@ sub write_file() {
 	print OUT "0 TRLR\n";
 	close OUT;
 	print "\nDone, created ", $args->{'o'}, "\n";
+    if ($args->{'N'}) {
+        print "Surname count\n";
+        foreach my $surname (sort {$ln->{$b} <=> $ln->{$a}} keys %$ln) {
+            ($ln->{$surname} > 1) && print "$surname - $ln->{$surname}\n";
+        }
+    }
 }
 
 sub array_has(@) {
@@ -263,6 +283,7 @@ sub usage() {
     -m, --married    Leave the _MAR field, which contains the married name,
                      in place.
     -n, --notes      Leave NOTE elements and their children in place.
+    -N, --number     Print a report containing the frequency of each surname.
     -o, --outfile    Output GEDCOM filename.
     -p, --places     Leave nonstandard children of PLAC elements in place.
                      The PLAC field itself is never removed, regardless
