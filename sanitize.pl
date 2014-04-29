@@ -22,25 +22,24 @@ read_file();
 write_file();
 
 sub init() {
+    my $options = {
+        'a' => {'long' => 'addr', 'default' => 0},
+        'c' => {'long' => 'change', 'default' => 0},
+        'i' => {'long' => 'infile', 'default' => ''},
+        'l' => {'long' => 'link', 'default' => ''},
+        'm' => {'long' => 'married', 'default' => 0},
+        'n' => {'long' => 'notes', 'default' => 0},
+        'N' => {'long' => 'number', 'default' => 0},
+        'o' => {'long' => 'outfile', 'default' => 0},
+        'p' => {'long' => 'places', 'default' => ''},
+    };
+
 	# Consolidate arguments of different forms
-	$args->{'a'} = (defined $args->{'a'} || defined $args->{'addr'})
-		? $args->{'a'} || $args->{'addr'} : 0;
-	$args->{'c'} = (defined $args->{'c'} || defined $args->{'change'})
-		? $args->{'c'} || $args->{'change'} : 0;
-	$args->{'i'} = (defined $args->{'i'} || defined $args->{'infile'})
-		? $args->{'i'} || $args->{'infile'} : '';
-	$args->{'l'} = (defined $args->{'l'} || defined $args->{'link'})
-		? $args->{'l'} || $args->{'link'} : '';
-	$args->{'m'} = (defined $args->{'m'} || defined $args->{'married'})
-		? $args->{'m'} || $args->{'married'} : 0;
-	$args->{'n'} = (defined $args->{'n'} || defined $args->{'notes'})
-		? $args->{'n'} || $args->{'notes'} : 0;
-	$args->{'N'} = (defined $args->{'N'} || defined $args->{'number'})
-		? $args->{'N'} || $args->{'number'} : 0;
-	$args->{'o'} = (defined $args->{'o'} || defined $args->{'outfile'})
-		? $args->{'o'} || $args->{'outfile'} : '';
-	$args->{'p'} = (defined $args->{'p'} || defined $args->{'places'})
-		? $args->{'p'} || $args->{'places'} : 0;
+    foreach my $shortname (keys %$options) {
+        my $longname = $options->{$shortname}{'long'};
+        $args->{$shortname} = (defined $args->{$shortname} || defined $args->{$longname}) ?
+            ($args->{$shortname} || $args->{$longname}) : $options->{$shortname}{'default'};
+    }
 
 	# Check that we were given a file and set up some variables.
 	if (!$args->{'i'}) {
